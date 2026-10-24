@@ -1,0 +1,99 @@
+{
+  "trained_at_utc": "2026-10-24T22:43:01.379061+00:00",
+  "target": "actual_gco2_per_kwh",
+  "units": "gCO2/kWh",
+  "region": "GB",
+  "data_source": "National Energy System Operator Carbon Intensity API",
+  "quantity": "Great Britain national average electricity carbon intensity",
+  "not_estimated": "This is not a marginal-emissions model.",
+  "prediction_horizon": "1 half-hour period, using only past actuals plus calendar features",
+  "feature_columns": [
+    "hour",
+    "day_of_week",
+    "month",
+    "hour_sin",
+    "hour_cos",
+    "dow_sin",
+    "dow_cos",
+    "month_sin",
+    "month_cos",
+    "lag_1",
+    "lag_2",
+    "lag_48",
+    "lag_336"
+  ],
+  "lags": [
+    1,
+    2,
+    48,
+    336
+  ],
+  "cleaned_rows": 8641,
+  "featured_rows": 8305,
+  "data_start_utc": "2026-04-26T21:30:00+00:00",
+  "data_end_utc": "2026-10-23T21:30:00+00:00",
+  "splits": {
+    "train_rows": 6960,
+    "validation_rows": 672,
+    "test_rows": 673
+  },
+  "evaluation": {
+    "train": {
+      "split": "train",
+      "rows": 6960,
+      "start_time": "2026-05-03T21:30:00+00:00",
+      "end_time": "2026-09-25T21:00:00+00:00",
+      "model": {
+        "mae": 2.8682734242801007,
+        "rmse": 3.86491532174
+      },
+      "baseline_persistence": {
+        "mae": 5.175,
+        "rmse": 7.057176179760847
+      },
+      "baseline_seasonal_naive": {
+        "mae": 35.89425287356322,
+        "rmse": 46.672261569373305
+      }
+    },
+    "validation": {
+      "split": "validation",
+      "rows": 672,
+      "start_time": "2026-09-25T21:30:00+00:00",
+      "end_time": "2026-10-09T21:00:00+00:00",
+      "model": {
+        "mae": 4.9040263664154775,
+        "rmse": 6.268071582896038
+      },
+      "baseline_persistence": {
+        "mae": 6.117559523809524,
+        "rmse": 8.088516992802644
+      },
+      "baseline_seasonal_naive": {
+        "mae": 54.36309523809524,
+        "rmse": 68.3471966192783
+      }
+    },
+    "test": {
+      "split": "test",
+      "rows": 673,
+      "start_time": "2026-10-09T21:30:00+00:00",
+      "end_time": "2026-10-23T21:30:00+00:00",
+      "model": {
+        "mae": 4.2096417726060436,
+        "rmse": 5.585002709342533
+      },
+      "baseline_persistence": {
+        "mae": 5.304606240713224,
+        "rmse": 7.225923284297293
+      },
+      "baseline_seasonal_naive": {
+        "mae": 38.89153046062407,
+        "rmse": 49.92005495863169
+      }
+    }
+  },
+  "best_iteration": 294,
+  "model_path": "D:\\MarinaHack2026\\EcoWatt-AI\\models\\xgb_national_intensity.json",
+  "notes": "Rows with missing intensity.actual were dropped. Official forecast values were not used as features."
+}

@@ -37,8 +37,16 @@ Thumbs.db
 .vscode/
 .idea/
 
-# ML artifacts (future model work)
-models/
+# Raw NESO downloads and temporary datasets
+data/raw/*
+!data/raw/.gitkeep
+data/tmp/
+data/processed/*.parquet
+
+# Generated model binaries (metadata README may be committed)
+models/*
+!models/.gitkeep
+!models/README.md
 *.pkl
 *.joblib
 *.h5
