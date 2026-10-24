@@ -1,5 +1,13 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.services.carbon_intensity import (
+    CarbonIntensityError,
+    CarbonIntensityResponseError,
+    CarbonIntensityUnavailableError,
+    CarbonIntensityService,
+    UnsupportedRegionError,
+)
 
 app = FastAPI(
     title="EcoWatt AI",
@@ -18,6 +26,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+carbon_intensity_service = CarbonIntensityService()
+
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
@@ -26,3 +36,42 @@ def health() -> dict[str, str]:
         "service": "ecowatt-ai",
         "message": "EcoWatt AI backend is running.",
     }
+
+
+@app.get("/api/carbon-forecast")
+def carbon_forecast(
+    region: str = Query(
+        default="gb",
+        description="Forecast region. Use gb for national Great Britain or london for NESO region 13.",
+    ),
+) -> dict:
+    try:
+        return carbon_intensity_service.get_forecast(region)
+    except UnsupportedRegionError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": exc.code, "message": exc.message},
+        ) from exc
+    except CarbonIntensityUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": exc.code,
+                "message": exc.message,
+                "data_source": "National Energy System Operator Carbon Intensity API",
+            },
+        ) from exc
+    except CarbonIntensityResponseError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": exc.code,
+                "message": exc.message,
+                "data_source": "National Energy System Operator Carbon Intensity API",
+            },
+        ) from exc
+    except CarbonIntensityError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"error": exc.code, "message": exc.message},
+        ) from exc
