@@ -1,0 +1,1 @@
+"""EcoWatt AI backend package."""

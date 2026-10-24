@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Frontend build
+frontend/dist/
+frontend/build/
+*.tsbuildinfo
+
+# Logs and caches
+*.log
+npm-debug.log*
+.vite/
+.cache/
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+
+# ML artifacts (future model work)
+models/
+*.pkl
+*.joblib
+*.h5
+*.onnx
+*.pt
+*.pth
+*.ckpt
+mlruns/
+wandb/
+runs/
+checkpoints/

@@ -1,0 +1,178 @@
+:root {
+  --bg: #ffffff;
+  --surface: #f7faf8;
+  --text: #1a2e24;
+  --muted: #4b6358;
+  --emerald: #047857;
+  --emerald-dark: #065f46;
+  --success-bg: #ecfdf5;
+  --success-border: #6ee7b7;
+  --fail-bg: #fef2f2;
+  --fail-border: #fecaca;
+  --fail-text: #991b1b;
+  --loading-bg: #f8fafc;
+  --border: #d1e4da;
+  --focus: #10b981;
+  --radius: 16px;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  font-size: 18px;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -100px;
+  background: var(--emerald);
+  color: #fff;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  z-index: 10;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 2.5rem 1.25rem 3rem;
+}
+
+.hero h1 {
+  margin: 0.25rem 0;
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  color: var(--emerald-dark);
+}
+
+.tagline {
+  margin: 0 0 1rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--emerald);
+}
+
+.eyebrow {
+  margin: 0;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.intro {
+  margin: 0;
+  color: var(--muted);
+  max-width: 42rem;
+}
+
+main {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+h2 {
+  margin-top: 0;
+  color: var(--emerald-dark);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.status {
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin: 1rem 0;
+  border: 1px solid transparent;
+}
+
+.status p {
+  margin: 0.35rem 0;
+}
+
+.status-loading {
+  background: var(--loading-bg);
+  border-color: var(--border);
+}
+
+.status-success {
+  background: var(--success-bg);
+  border-color: var(--success-border);
+}
+
+.status-failure {
+  background: var(--fail-bg);
+  border-color: var(--fail-border);
+  color: var(--fail-text);
+}
+
+.button {
+  appearance: none;
+  border: 0;
+  background: var(--emerald);
+  color: #ffffff;
+  font: inherit;
+  font-weight: 650;
+  padding: 0.85rem 1.2rem;
+  min-height: 48px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--emerald-dark);
+}
+
+.button:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+li + li {
+  margin-top: 0.45rem;
+}
+
+footer {
+  margin-top: 2rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding-top: 1.5rem;
+  }
+}
