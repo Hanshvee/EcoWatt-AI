@@ -1,111 +1,225 @@
 import { useEffect, useState } from "react";
-import { API_BASE_URL, fetchHealth } from "./api/client.js";
+import {
+  createMultiSchedule,
+  createSchedule,
+  fetchCarbonForecast,
+} from "./api/client.js";
+import Forecast from "./components/Forecast.jsx";
+import Nav from "./components/Nav.jsx";
+import Planner from "./components/Planner.jsx";
+import Results from "./components/Results.jsx";
+import { APPLIANCES, createApplianceDraft } from "./lib/appliances.js";
+import { normalizeScheduleResult } from "./lib/result.js";
+import { fromLocalInputValue, snapToHalfHourUtc, toIsoUtc } from "./lib/time.js";
+import { validatePlanner } from "./lib/validation.js";
 
-const STATUS = {
-  loading: "loading",
-  success: "success",
-  failure: "failure",
-};
+function nextUnusedType(current) {
+  return APPLIANCES.find((item) => !current.some((draft) => draft.type === item.type))?.type
+    || current[0]?.type
+    || "dishwasher";
+}
 
-function App() {
-  const [status, setStatus] = useState(STATUS.loading);
-  const [health, setHealth] = useState(null);
-  const [errorMessage, setErrorMessage] = useState("");
+export default function App() {
+  const [region, setRegion] = useState("gb");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [forecastStatus, setForecastStatus] = useState("loading");
+  const [forecast, setForecast] = useState(null);
+  const [forecastError, setForecastError] = useState("");
+  const [mode, setMode] = useState("single");
+  const [appliances, setAppliances] = useState([createApplianceDraft("dishwasher")]);
+  const [householdMaxPowerKw, setHouseholdMaxPowerKw] = useState("5");
+  const [formErrors, setFormErrors] = useState([]);
+  const [resultStatus, setResultStatus] = useState("idle");
+  const [resultError, setResultError] = useState("");
+  const [result, setResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [currentSection, setCurrentSection] = useState("forecast");
 
-  async function checkConnection() {
-    setStatus(STATUS.loading);
-    setErrorMessage("");
+  useEffect(() => {
+    const controller = new AbortController();
+    setForecastStatus("loading");
+    setForecastError("");
+    fetchCarbonForecast(region, { signal: controller.signal })
+      .then((payload) => {
+        setForecast(payload);
+        setForecastStatus("success");
+      })
+      .catch((error) => {
+        if (error.name === "AbortError") {
+          return;
+        }
+        setForecast(null);
+        setForecastStatus("failure");
+        setForecastError(error.message);
+      });
+    return () => controller.abort();
+  }, [region]);
+
+  useEffect(() => {
+    const ids = ["forecast", "planner", "results"];
+    const elements = ids.map((id) => document.getElementById(id)).filter(Boolean);
+    if (!elements.length) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (visible?.target?.id) {
+          setCurrentSection(visible.target.id);
+        }
+      },
+      { rootMargin: "-18% 0px -55% 0px", threshold: [0.15, 0.35, 0.6] },
+    );
+    elements.forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [resultStatus]);
+
+  function setPlannerMode(next) {
+    setMode(next);
+    setFormErrors([]);
+    if (next === "single") {
+      setAppliances((current) => [current[0] || createApplianceDraft("dishwasher")]);
+      return;
+    }
+    setAppliances((current) => {
+      if (current.length >= 2) {
+        return current;
+      }
+      const first = current[0] || createApplianceDraft("dishwasher");
+      return [first, createApplianceDraft(nextUnusedType([first]), 2)];
+    });
+  }
+
+  function updateAppliance(key, patch) {
+    setAppliances((current) =>
+      current.map((item) => (item.key === key ? { ...item, ...patch } : item)),
+    );
+  }
+
+  function addAppliance() {
+    if (mode !== "multiple") {
+      return;
+    }
+    setAppliances((current) =>
+      current.length >= 6 ? current : [...current, createApplianceDraft(nextUnusedType(current), current.length + 1)],
+    );
+  }
+
+  function selectType(type) {
+    if (mode === "single") {
+      setAppliances([createApplianceDraft(type)]);
+      return;
+    }
+    setAppliances((current) => {
+      const existing = current.find((item) => item.type === type);
+      if (existing) {
+        return current.length <= 2 ? current : current.filter((item) => item.key !== existing.key);
+      }
+      if (current.length >= 6) {
+        return current;
+      }
+      return [...current, createApplianceDraft(type, current.length + 1)];
+    });
+  }
+
+  function removeAppliance(key) {
+    setAppliances((current) => {
+      if (mode === "multiple" && current.length <= 2) {
+        return current;
+      }
+      const next = current.filter((item) => item.key !== key);
+      return next.length ? next : [createApplianceDraft("dishwasher")];
+    });
+  }
+
+  async function submitPlan() {
+    const errors = validatePlanner({ appliances, householdMaxPowerKw, mode });
+    setFormErrors(errors);
+    if (errors.length) {
+      return;
+    }
+
+    setSubmitting(true);
+    setResultStatus("loading");
+    setResultError("");
+    setResult(null);
 
     try {
-      const result = await fetchHealth();
-      setHealth(result);
-      setStatus(STATUS.success);
+      if (mode === "single" || appliances.length === 1) {
+        const item = appliances[0];
+        const payload = await createSchedule({
+          region,
+          appliance: item.type,
+          earliest_start: toIsoUtc(fromLocalInputValue(item.earliestLocal)),
+          latest_finish: toIsoUtc(fromLocalInputValue(item.latestLocal)),
+          duration_minutes: Number(item.durationMinutes),
+          energy_kwh: Number(item.energyKwh),
+        });
+        setResult(normalizeScheduleResult(payload, "single"));
+      } else {
+        const payload = await createMultiSchedule({
+          region,
+          household_max_power_kw: Number(householdMaxPowerKw),
+          appliances: appliances.map((item, index) => ({
+            id: `${item.type}-${index + 1}`,
+            appliance: item.type,
+            earliest_start: toIsoUtc(snapToHalfHourUtc(fromLocalInputValue(item.earliestLocal))),
+            latest_finish: toIsoUtc(snapToHalfHourUtc(fromLocalInputValue(item.latestLocal))),
+            duration_minutes: Number(item.durationMinutes),
+            energy_kwh: Number(item.energyKwh),
+          })),
+        });
+        setResult(normalizeScheduleResult(payload, "multiple"));
+      }
+      setResultStatus("success");
+      window.requestAnimationFrame(() => {
+        document.getElementById("results")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (error) {
-      setHealth(null);
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "Unable to reach the EcoWatt AI backend.",
-      );
-      setStatus(STATUS.failure);
+      setResultStatus("failure");
+      setResultError(error.message || "The schedule request failed.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  useEffect(() => {
-    checkConnection();
-  }, []);
-
   return (
-    <div className="page">
-      <a className="skip-link" href="#main">
-        Skip to main content
-      </a>
-
-      <header className="hero">
-        <p className="eyebrow">MarinaHacks 2026 · Social Goods</p>
-        <h1>EcoWatt AI</h1>
-        <p className="tagline">Power Your Life. Protect Our Planet.</p>
-        <p className="intro">
-          A simple, accessible way for households to start thinking about
-          cleaner electricity timing. This starter screen confirms that the
-          application is running and connected.
-        </p>
-      </header>
-
-      <main id="main">
-        <section className="card" aria-labelledby="connection-heading">
-          <h2 id="connection-heading">Backend connection</h2>
-          <p className="muted">Checking {API_BASE_URL}/api/health</p>
-
-          {status === STATUS.loading && (
-            <p className="status status-loading" role="status" aria-live="polite">
-              Connecting to the EcoWatt AI backend…
-            </p>
-          )}
-
-          {status === STATUS.success && (
-            <div className="status status-success" role="status" aria-live="polite">
-              <p>
-                <strong>Connected.</strong> The backend is reachable and
-                responding.
-              </p>
-              {health?.message && <p>{health.message}</p>}
-              {health?.service && (
-                <p className="muted">Service: {health.service}</p>
-              )}
-            </div>
-          )}
-
-          {status === STATUS.failure && (
-            <div className="status status-failure" role="alert" aria-live="assertive">
-              <p>
-                <strong>Not connected.</strong> Start the backend, then try
-                again.
-              </p>
-              {errorMessage && <p className="muted">{errorMessage}</p>}
-            </div>
-          )}
-
-          <button type="button" className="button" onClick={checkConnection}>
-            Check connection again
-          </button>
-        </section>
-
-        <section className="card" aria-labelledby="about-heading">
-          <h2 id="about-heading">What this starter includes</h2>
-          <ul>
-            <li>A React interface designed for clear reading and large tap targets.</li>
-            <li>A FastAPI backend with a health check at /api/health.</li>
-            <li>No estimated electricity use or carbon savings yet.</li>
-          </ul>
-        </section>
+    <div className="app">
+      <a className="skip-link" href="#forecast">Skip to content</a>
+      <Nav
+        region={region}
+        onRegionChange={setRegion}
+        open={menuOpen}
+        onToggle={() => setMenuOpen((value) => !value)}
+        onCloseMenu={() => setMenuOpen(false)}
+        current={currentSection}
+      />
+      <main>
+        <Forecast
+          region={region}
+          status={forecastStatus}
+          forecast={forecast}
+          error={forecastError}
+        />
+        <Planner
+          mode={mode}
+          onMode={setPlannerMode}
+          appliances={appliances}
+          householdMaxPowerKw={householdMaxPowerKw}
+          onHouseholdPower={setHouseholdMaxPowerKw}
+          onSelectType={selectType}
+          onChangeAppliance={updateAppliance}
+          onAdd={addAppliance}
+          onRemove={removeAppliance}
+          onSubmit={submitPlan}
+          submitting={submitting}
+          errors={formErrors}
+        />
+        <Results status={resultStatus} error={resultError} result={result} />
       </main>
-
-      <footer>
-        <p>EcoWatt AI · MarinaHacks 2026 · Social Goods</p>
-      </footer>
     </div>
   );
 }
-
-export default App;
