@@ -516,12 +516,7 @@ By making forecast information understandable and scheduling recommendations acc
 - The platform depends on available NESO forecast data.
 - The operating power of an appliance is modeled as uniform over its runtime.
 - Multi-appliance scheduling uses 30-minute intervals.
-- Real appliance power profiles may differ from user-provided estimates.
-- The XGBoost model is not currently integrated into the live scheduling API.
 - EcoWatt does not automatically control household appliances.
-- Electricity price optimization is not currently implemented.
-- Forecast average intensity is not the same as marginal emissions.
-- Modeled emissions differences are not verified avoided emissions.
 
 ---
 
