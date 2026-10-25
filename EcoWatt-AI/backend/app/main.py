@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.models.multi_schedule import MultiScheduleRequest, MultiScheduleResponse
 from app.models.schedule import ScheduleRequest, ScheduleResponse
 from app.services.carbon_intensity import (
     CarbonIntensityError,
@@ -9,6 +10,7 @@ from app.services.carbon_intensity import (
     CarbonIntensityService,
     UnsupportedRegionError,
 )
+from app.services.multi_scheduler import build_multi_schedule, request_from_time
 from app.services.scheduler import ScheduleError, build_schedule
 
 app = FastAPI(
@@ -87,6 +89,49 @@ def create_schedule(body: ScheduleRequest) -> ScheduleResponse:
             from_time=body.earliest_start,
         )
         return build_schedule(body, forecast)
+    except ScheduleError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"error": exc.code, "message": exc.message},
+        ) from exc
+    except UnsupportedRegionError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": exc.code, "message": exc.message},
+        ) from exc
+    except CarbonIntensityUnavailableError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "error": exc.code,
+                "message": exc.message,
+                "data_source": "National Energy System Operator Carbon Intensity API",
+            },
+        ) from exc
+    except CarbonIntensityResponseError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={
+                "error": exc.code,
+                "message": exc.message,
+                "data_source": "National Energy System Operator Carbon Intensity API",
+            },
+        ) from exc
+    except CarbonIntensityError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail={"error": exc.code, "message": exc.message},
+        ) from exc
+
+
+@app.post("/api/schedule/multiple")
+def create_multi_schedule(body: MultiScheduleRequest) -> MultiScheduleResponse:
+    try:
+        forecast = carbon_intensity_service.get_forecast(
+            body.region,
+            from_time=request_from_time(body),
+        )
+        return build_multi_schedule(body, forecast)
     except ScheduleError as exc:
         raise HTTPException(
             status_code=exc.status_code,
