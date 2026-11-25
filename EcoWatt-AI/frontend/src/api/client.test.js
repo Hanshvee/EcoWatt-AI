@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { API_BASE_URL, apiUrl, fetchCarbonForecast, networkErrorMessage, parseApiError } from "./client.js";
+import {
+  API_BASE_URL,
+  PRODUCTION_API_BASE_URL,
+  apiUrl,
+  fetchCarbonForecast,
+  networkErrorMessage,
+  parseApiError,
+  resolveApiBaseUrl,
+} from "./client.js";
 
 describe("API helpers", () => {
   afterEach(() => {
@@ -11,6 +19,13 @@ describe("API helpers", () => {
     expect(apiUrl("/api/carbon-forecast?region=gb")).toBe("/api/carbon-forecast?region=gb");
   });
 
+  it("uses the Render API when a production build has no configured base", () => {
+    expect(resolveApiBaseUrl(false, "")).toBe(PRODUCTION_API_BASE_URL);
+    expect(resolveApiBaseUrl(false, "https://ecowatt-ai-api.onrender.com")).toBe(
+      "https://ecowatt-ai-api.onrender.com",
+    );
+  });
+
   it("reads structured FastAPI errors", () => {
     expect(parseApiError({ detail: { message: "Unsupported region" } }, 400)).toBe(
       "Unsupported region",
@@ -19,7 +34,13 @@ describe("API helpers", () => {
   });
 
   it("maps browser network failures away from Failed to fetch", () => {
-    expect(networkErrorMessage(new TypeError("Failed to fetch"))).toMatch(/port 8010/);
+    expect(networkErrorMessage(new TypeError("Failed to fetch"), true)).toMatch(/port 8010/);
+  });
+
+  it("does not mention a local port when production cannot reach the API", () => {
+    const message = networkErrorMessage(new TypeError("Failed to fetch"), false);
+    expect(message).toMatch(/Could not reach the EcoWatt AI service/);
+    expect(message).not.toMatch(/8010/);
   });
 
   it("requests the carbon forecast for the selected region", async () => {

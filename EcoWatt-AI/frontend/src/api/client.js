@@ -1,7 +1,17 @@
+export const PRODUCTION_API_BASE_URL = "https://ecowatt-ai-api.onrender.com";
+
 const configuredBase = String(import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 
-// Dev uses same-origin /api so the browser never hits CORS. Vite proxies to the backend.
-export const API_BASE_URL = import.meta.env.DEV ? "" : configuredBase || "http://127.0.0.1:8010";
+// Dev uses same-origin /api so the browser never hits CORS. Vite proxies to the local backend.
+// Production uses VITE_API_BASE_URL when it is set, otherwise the live Render API.
+export function resolveApiBaseUrl(dev = import.meta.env.DEV, configured = configuredBase) {
+  if (dev) {
+    return "";
+  }
+  return configured || PRODUCTION_API_BASE_URL;
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export { configuredBase as CONFIGURED_API_BASE_URL };
 
@@ -22,13 +32,18 @@ export function parseApiError(payload, status) {
   return `Request failed with status ${status}.`;
 }
 
-export function networkErrorMessage(error) {
+const LOCAL_NETWORK_ERROR =
+  "Could not reach the EcoWatt AI service. Confirm the backend is running on port 8010.";
+const PRODUCTION_NETWORK_ERROR =
+  "Could not reach the EcoWatt AI service. Please try again in a moment.";
+
+export function networkErrorMessage(error, dev = import.meta.env.DEV) {
   const message = error?.message || "";
   if (error?.name === "AbortError") {
     return message;
   }
   if (error?.name === "TypeError" || /failed to fetch/i.test(message)) {
-    return "Could not reach the EcoWatt AI service. Confirm the backend is running on port 8010.";
+    return dev ? LOCAL_NETWORK_ERROR : PRODUCTION_NETWORK_ERROR;
   }
   return message || "The request failed.";
 }
